@@ -19679,11 +19679,18 @@ var AppActions = {
       actionType: AppConstants.ADD_NOTE,
       note: note
     });
+  },
+
+  receiveNotes: function(notes) {
+    AppDispatcher.handleViewAction({
+      actionType: AppConstants.RECEIVE_NOTES,
+      notes: notes
+    });
   }
 }
 
 module.exports = AppActions;
-},{"../constants/AppConstants":167,"../dispatcher/AppDispatcher":168}],165:[function(require,module,exports){
+},{"../constants/AppConstants":169,"../dispatcher/AppDispatcher":170}],165:[function(require,module,exports){
 var React = require('react');
 var AppActions = require('../actions/AppActions');
 var AppStore = require('../stores/AppStore');
@@ -19720,11 +19727,12 @@ var AddNoteForm = React.createClass({displayName: "AddNoteForm",
 });
 
 module.exports = AddNoteForm;
-},{"../actions/AppActions":164,"../stores/AppStore":170,"react":163}],166:[function(require,module,exports){
+},{"../actions/AppActions":164,"../stores/AppStore":172,"react":163}],166:[function(require,module,exports){
 var React = require('react');
 var AppActions = require('../actions/AppActions');
 var AppStore = require('../stores/AppStore');
 var AddNoteForm = require('./AddNoteForm.js');
+var NoteList = require('./NoteList.js');
 
 function getAppState(){
   return {
@@ -19746,7 +19754,6 @@ var App = React.createClass({displayName: "App",
   },
 
   render: function(){
-    console.log(this.state.notes);
     return(
       React.createElement("div", null, 
         React.createElement("div", {className: "off-canvas-wrapper"}, 
@@ -19758,7 +19765,7 @@ var App = React.createClass({displayName: "App",
               )
             ), 
             React.createElement("div", {className: "off-canvas-content", "data-off-canvas-content": true}, 
-            "// NOTELIST"
+              React.createElement(NoteList, {notes: this.state.notes})
             )
           )
         )
@@ -19772,11 +19779,49 @@ var App = React.createClass({displayName: "App",
 });
 
 module.exports = App;
-},{"../actions/AppActions":164,"../stores/AppStore":170,"./AddNoteForm.js":165,"react":163}],167:[function(require,module,exports){
+},{"../actions/AppActions":164,"../stores/AppStore":172,"./AddNoteForm.js":165,"./NoteList.js":168,"react":163}],167:[function(require,module,exports){
+var React = require('react');
+
+var NoteList = React.createClass({displayName: "NoteList",
+  render: function(){
+    return(
+      React.createElement("div", {className: "column"}, 
+        React.createElement("div", {className: "note"}, React.createElement("p", null, this.props.note.text))
+      )
+    );
+  },
+});
+
+module.exports = NoteList;
+
+},{"react":163}],168:[function(require,module,exports){
+var React = require('react');
+var Note = require('./Note.js');
+
+var NoteList = React.createClass({displayName: "NoteList",
+  render: function(){
+    return(
+      React.createElement("div", {className: "row small-up-2 medium-up-3 large-up-4"}, 
+       
+        this.props.notes.map(function(note, i) {
+          return (
+            React.createElement(Note, {note: note, key: i})
+          )
+        })
+       
+      )
+    );
+  },
+});
+
+module.exports = NoteList;
+
+},{"./Note.js":167,"react":163}],169:[function(require,module,exports){
 module.exports = {
-  ADD_NOTE: 'ADD_NOTE'
+  ADD_NOTE: 'ADD_NOTE',
+  RECEIVE_NOTES: 'RECEIVE_NOTES'
 }
-},{}],168:[function(require,module,exports){
+},{}],170:[function(require,module,exports){
 var Dispatcher = require('flux').Dispatcher;
 var assign = require('object-assign');
 
@@ -19791,18 +19836,19 @@ var AppDispatcher = assign(new Dispatcher(),{
 });
 
 module.exports = AppDispatcher;
-},{"flux":29,"object-assign":32}],169:[function(require,module,exports){
+},{"flux":29,"object-assign":32}],171:[function(require,module,exports){
 var App = require('./components/App');
 var React = require('react');
 var ReactDOM = require('react-dom');
 var AppAPI = require('./utils/appAPI.js');
 
+AppAPI.getNotes();
 
 ReactDOM.render(
   React.createElement(App, null),
   document.getElementById('app')
 );
-},{"./components/App":166,"./utils/appAPI.js":172,"react":163,"react-dom":34}],170:[function(require,module,exports){
+},{"./components/App":166,"./utils/appAPI.js":174,"react":163,"react-dom":34}],172:[function(require,module,exports){
 var AppDispatcher = require('../dispatcher/AppDispatcher');
 var AppConstants = require('../constants/AppConstants');
 var EventEmitter = require('events').EventEmitter;
@@ -19822,6 +19868,10 @@ var AppStore = assign({}, EventEmitter.prototype, {
     return _notes;
   },
 
+  receiveNotes: function(notes) {
+    _notes = notes;
+  },
+
   emitChange: function(){
     this.emit(CHANGE_EVENT);
   },
@@ -19839,6 +19889,10 @@ AppDispatcher.register(function(payload){
   switch(action.actionType){
     case AppConstants.ADD_NOTE:
       AppStore.addNote(action.note);
+      AppAPI.addNote(action.note);
+      break;
+    case AppConstants.RECEIVE_NOTES:
+      AppStore.receiveNotes(action.notes);
       break;
     default:
       return true;
@@ -19848,16 +19902,56 @@ AppDispatcher.register(function(payload){
 });
 
 module.exports = AppStore;
-},{"../constants/AppConstants":167,"../dispatcher/AppDispatcher":168,"../utils/AppAPI.js":171,"events":1,"object-assign":32}],171:[function(require,module,exports){
+},{"../constants/AppConstants":169,"../dispatcher/AppDispatcher":170,"../utils/AppAPI.js":173,"events":1,"object-assign":32}],173:[function(require,module,exports){
 var AppActions = require('../actions/AppActions');
 
 module.exports = {
+  addNote: function(note) {
+    $.ajax({
+      url: 'https://api.mlab.com/api/1/databases/stickypad/collections/notes?apiKey=v3t1q4vvbrcF5LmOJ13j19qpmhYHeDSW',
+      data: JSON.stringify(note),
+      type: 'POST',
+      contentType: 'application/json'
+    });
+  },
 
+  getNotes: function() {
+    $.ajax({
+      url: 'https://api.mlab.com/api/1/databases/stickypad/collections/notes?apiKey=v3t1q4vvbrcF5LmOJ13j19qpmhYHeDSW',
+      dataType: 'json',
+      success: function(data) {
+        AppActions.receiveNotes(data);
+      },
+      error: function(xhr, status, err) {
+        console.log(err);
+      }
+    });
+  },
 }
-},{"../actions/AppActions":164}],172:[function(require,module,exports){
+},{"../actions/AppActions":164}],174:[function(require,module,exports){
 var AppActions = require('../actions/AppActions');
 
 module.exports = {
+  addNote: function(note) {
+    $.ajax({
+      url: 'https://api.mlab.com/api/1/databases/stickypad/collections/notes?apiKey=v3t1q4vvbrcF5LmOJ13j19qpmhYHeDSW',
+      data: JSON.stringify(note),
+      type: 'POST',
+      contentType: 'application/json'
+    });
+  },
 
+  getNotes: function() {
+    $.ajax({
+      url: 'https://api.mlab.com/api/1/databases/stickypad/collections/notes?apiKey=v3t1q4vvbrcF5LmOJ13j19qpmhYHeDSW',
+      dataType: 'json',
+      success: function(data) {
+        AppActions.receiveNotes(data);
+      },
+      error: function(xhr, status, err) {
+        console.log(err);
+      }
+    });
+  },
 }
-},{"../actions/AppActions":164}]},{},[169]);
+},{"../actions/AppActions":164}]},{},[171]);
