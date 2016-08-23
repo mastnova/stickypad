@@ -19674,6 +19674,13 @@ var AppDispatcher = require('../dispatcher/AppDispatcher');
 var AppConstants = require('../constants/AppConstants');
 
 var AppActions = {
+  saveNote: function(note) {
+    AppDispatcher.handleViewAction({
+      actionType: AppConstants.SAVE_NOTE,
+      note: note
+    });
+  },
+
   addNote: function(note) {
     AppDispatcher.handleViewAction({
       actionType: AppConstants.ADD_NOTE,
@@ -19685,6 +19692,13 @@ var AppActions = {
     AppDispatcher.handleViewAction({
       actionType: AppConstants.RECEIVE_NOTES,
       notes: notes
+    });
+  },
+
+  removeNote: function(id) {
+    AppDispatcher.handleViewAction({
+      actionType: AppConstants.REMOVE_NOTE,
+      id: id
     });
   }
 }
@@ -19720,8 +19734,8 @@ var AddNoteForm = React.createClass({displayName: "AddNoteForm",
     var note = {
       text: this.refs.text.value.trim()
     }
-
-    AppActions.addNote(note);
+    this.refs.text.value = '';
+    AppActions.saveNote(note);
   }
 
 });
@@ -19781,20 +19795,29 @@ var App = React.createClass({displayName: "App",
 module.exports = App;
 },{"../actions/AppActions":164,"../stores/AppStore":172,"./AddNoteForm.js":165,"./NoteList.js":168,"react":163}],167:[function(require,module,exports){
 var React = require('react');
+var AppActions = require('../actions/AppActions');
 
 var NoteList = React.createClass({displayName: "NoteList",
   render: function(){
     return(
       React.createElement("div", {className: "column"}, 
-        React.createElement("div", {className: "note"}, React.createElement("p", null, this.props.note.text))
+        React.createElement("div", {
+          onDoubleClick: this.removeNote.bind(this, this.props.note._id), 
+          className: "note"}, 
+            React.createElement("p", null, this.props.note.text)
+        )
       )
     );
   },
+
+  removeNote(_id) {
+    AppActions.removeNote(_id.$oid);
+  }
 });
 
 module.exports = NoteList;
 
-},{"react":163}],168:[function(require,module,exports){
+},{"../actions/AppActions":164,"react":163}],168:[function(require,module,exports){
 var React = require('react');
 var Note = require('./Note.js');
 
@@ -19819,7 +19842,9 @@ module.exports = NoteList;
 },{"./Note.js":167,"react":163}],169:[function(require,module,exports){
 module.exports = {
   ADD_NOTE: 'ADD_NOTE',
-  RECEIVE_NOTES: 'RECEIVE_NOTES'
+  SAVE_NOTE: 'SAVE_NOTE',
+  RECEIVE_NOTES: 'RECEIVE_NOTES',
+  REMOVE_NOTE: 'REMOVE_NOTE'
 }
 },{}],170:[function(require,module,exports){
 var Dispatcher = require('flux').Dispatcher;
@@ -19872,6 +19897,15 @@ var AppStore = assign({}, EventEmitter.prototype, {
     _notes = notes;
   },
 
+  removeNote: function(id) {
+    _notes = _notes.filter(function(note) {
+      if (note._id.$oid === id) {
+        return false;
+      }
+      return true;
+    });
+  },
+
   emitChange: function(){
     this.emit(CHANGE_EVENT);
   },
@@ -19887,12 +19921,18 @@ AppDispatcher.register(function(payload){
   var action = payload.action;
 
   switch(action.actionType){
+    case AppConstants.SAVE_NOTE:
+      AppAPI.addNote(action.note);
+      break;
     case AppConstants.ADD_NOTE:
       AppStore.addNote(action.note);
-      AppAPI.addNote(action.note);
       break;
     case AppConstants.RECEIVE_NOTES:
       AppStore.receiveNotes(action.notes);
+      break;
+    case AppConstants.REMOVE_NOTE:
+      AppStore.removeNote(action.id);
+      AppAPI.removeNote(action.id);
       break;
     default:
       return true;
@@ -19911,7 +19951,13 @@ module.exports = {
       url: 'https://api.mlab.com/api/1/databases/stickypad/collections/notes?apiKey=v3t1q4vvbrcF5LmOJ13j19qpmhYHeDSW',
       data: JSON.stringify(note),
       type: 'POST',
-      contentType: 'application/json'
+      contentType: 'application/json',
+      success: function(note) {
+        AppActions.addNote(note);
+      },
+      error: function(xhr, status, err) {
+        console.log(err);
+      }
     });
   },
 
@@ -19927,6 +19973,14 @@ module.exports = {
       }
     });
   },
+
+  removeNote: function(id) {
+    $.ajax({
+      url: 'https://api.mlab.com/api/1/databases/stickypad/collections/notes/'+id+'?apiKey=v3t1q4vvbrcF5LmOJ13j19qpmhYHeDSW',
+      method: 'DELETE',
+      timeout: 300000
+    });
+  }
 }
 },{"../actions/AppActions":164}],174:[function(require,module,exports){
 var AppActions = require('../actions/AppActions');
@@ -19937,7 +19991,13 @@ module.exports = {
       url: 'https://api.mlab.com/api/1/databases/stickypad/collections/notes?apiKey=v3t1q4vvbrcF5LmOJ13j19qpmhYHeDSW',
       data: JSON.stringify(note),
       type: 'POST',
-      contentType: 'application/json'
+      contentType: 'application/json',
+      success: function(note) {
+        AppActions.addNote(note);
+      },
+      error: function(xhr, status, err) {
+        console.log(err);
+      }
     });
   },
 
@@ -19953,5 +20013,13 @@ module.exports = {
       }
     });
   },
+
+  removeNote: function(id) {
+    $.ajax({
+      url: 'https://api.mlab.com/api/1/databases/stickypad/collections/notes/'+id+'?apiKey=v3t1q4vvbrcF5LmOJ13j19qpmhYHeDSW',
+      method: 'DELETE',
+      timeout: 300000
+    });
+  }
 }
 },{"../actions/AppActions":164}]},{},[171]);

@@ -21,6 +21,15 @@ var AppStore = assign({}, EventEmitter.prototype, {
     _notes = notes;
   },
 
+  removeNote: function(id) {
+    _notes = _notes.filter(function(note) {
+      if (note._id.$oid === id) {
+        return false;
+      }
+      return true;
+    });
+  },
+
   emitChange: function(){
     this.emit(CHANGE_EVENT);
   },
@@ -36,12 +45,18 @@ AppDispatcher.register(function(payload){
   var action = payload.action;
 
   switch(action.actionType){
+    case AppConstants.SAVE_NOTE:
+      AppAPI.addNote(action.note);
+      break;
     case AppConstants.ADD_NOTE:
       AppStore.addNote(action.note);
-      AppAPI.addNote(action.note);
       break;
     case AppConstants.RECEIVE_NOTES:
       AppStore.receiveNotes(action.notes);
+      break;
+    case AppConstants.REMOVE_NOTE:
+      AppStore.removeNote(action.id);
+      AppAPI.removeNote(action.id);
       break;
     default:
       return true;

@@ -27,8 +27,8 @@ var AddNoteForm = React.createClass({
     var note = {
       text: this.refs.text.value.trim()
     }
-
-    AppActions.addNote(note);
+    this.refs.text.value = '';
+    AppActions.saveNote(note);
   }
 
 });
